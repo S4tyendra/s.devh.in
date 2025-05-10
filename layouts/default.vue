@@ -49,14 +49,14 @@
         <div class="container mx-auto px-4 py-6">
           <div class="flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row md:py-0">
             <div class="text-center text-sm leading-loose text-muted-foreground md:text-left">
-              Built by <a href="https://github.com/your-username" target="_blank" rel="noopener noreferrer"
-                class="font-medium underline underline-offset-4">your-username</a>.
-              The source code is available on <a href="https://github.com/your-username/short-devh" target="_blank"
+              Built by <a href="https://github.com/s4tyendra" target="_blank" rel="noopener noreferrer"
+                class="font-medium underline underline-offset-4">s4tyendra</a>.
+              The source code is available on <a href="https://github.com/s4tyendra/s.devh.in" target="_blank"
                 rel="noopener noreferrer" class="font-medium underline underline-offset-4">GitHub</a>.
             </div>
             <div class="flex items-center space-x-1">
               <Button variant="ghost" size="icon" asChild>
-                <a href="https://github.com/your-username/short-devh" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/s4tyendra/s.devh.in" target="_blank" rel="noopener noreferrer">
                   <Github class="h-4 w-4" />
                   <span class="sr-only">GitHub</span>
                 </a>
