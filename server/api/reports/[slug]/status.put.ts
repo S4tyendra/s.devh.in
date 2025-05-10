@@ -13,6 +13,10 @@ const isAdminAuthenticated = (event: any): boolean => {
 };
 
 export default defineEventHandler(async (event) => {
+  throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden. Admin access required.',
+    });
   if (!isAdminAuthenticated(event)) {
     throw createError({
       statusCode: 403,
