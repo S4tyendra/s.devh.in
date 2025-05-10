@@ -63,11 +63,6 @@
                           <Copy v-else class="h-3 w-3" />
                           <span class="sr-only">Copy</span>
                         </Button>
-                        <Button variant="ghost" size="sm" class="h-6 w-6 p-0"
-                          @click="() => item.id && handleDelete(item.id)">
-                          <Trash2 class="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                          <span class="sr-only">Delete</span>
-                        </Button>
                       </div>
                     </div>
                     <div class="text-xs text-muted-foreground truncate mb-2">{{ normalizeUrl(item.originalUrl) }}</div>
@@ -97,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { Copy, Trash2, Clock, ExternalLink, X, ArchiveX, RefreshCw, Check } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -229,14 +224,15 @@ const formatDate = (timestamp: number) => {
 // Event bus or alternative for cross-component communication to refresh history
 // For Nuxt 3, you can use useState for simple global state or Pinia for more complex state.
 // This is a placeholder for now if direct prop drilling or events are not sufficient.
-const { $eventBus } = useNuxtApp();
-if ($eventBus) {
-  $eventBus.on('urlShortened', loadHistory);
+const eventBus = useEventBus();
 
-  onUnmounted(() => {
-    $eventBus.off('urlShortened', loadHistory);
-  });
-}
+onMounted(() => {
+  eventBus.on('urlShortened', loadHistory);
+});
+
+onUnmounted(() => {
+  eventBus.off('urlShortened', loadHistory);
+});
 
 
 </script>
