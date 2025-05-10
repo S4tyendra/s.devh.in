@@ -35,7 +35,7 @@
                       <div class="space-y-2">
                         <Label for="url">URL to shorten</Label>
                         <div class="relative">
-                          <Input ref="inputUrlRef" id="url" type="url"
+                          <Input ref="inputUrlRef" id="url" type="text"
                             placeholder="https://example.com/very/long/url/that/needs/shortening" v-model="originalUrl"
                             class="pr-10" :disabled="loading" required />
                           <Link
@@ -50,7 +50,7 @@
                           <Label for="protected-mode" class="cursor-pointer">
                             <div class="flex items-center">
                               <Lock v-if="protectWithPin" class="h-4 w-4 mr-1 text-primary" />
-                              <LockOpen v-else class="h-4 w-4 mr-1 text-muted-foreground" />
+                              <Unlock v-else class="h-4 w-4 mr-1 text-muted-foreground" />
                               PIN Protection
                             </div>
                           </Label>
@@ -305,6 +305,11 @@ const handlePinComplete = (value: string[]) => {
   }
 };
 
+const normalizeUrl = (url: string): string => {
+  if (!url) return url;
+  return url.match(/^https?:\/\//) ? url : `https://${url}`;
+};
+
 const submitUrl = async () => {
   error.value = '';
   pinError.value = '';
@@ -316,6 +321,8 @@ const submitUrl = async () => {
     return;
   }
 
+  const normalizedUrl = normalizeUrl(originalUrl.value);
+  
   const currentPinValue = pin.value.join('');
   if (protectWithPin.value && (currentPinValue.length < 4 || currentPinValue.length > 6 || !/^\d+$/.test(currentPinValue))) {
     pinError.value = 'PIN must be 4-6 digits.';
@@ -330,7 +337,7 @@ const submitUrl = async () => {
     const { data: apiResponse, error: fetchError } = await useFetch('/api/shorten', {
       method: 'POST',
       body: {
-        originalUrl: originalUrl.value,
+        originalUrl: normalizedUrl,
         pin: protectWithPin.value ? currentPinValue : undefined,
       },
     });

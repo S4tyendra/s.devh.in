@@ -70,7 +70,7 @@
                         </Button>
                       </div>
                     </div>
-                    <div class="text-xs text-muted-foreground truncate mb-2">{{ item.originalUrl }}</div>
+                    <div class="text-xs text-muted-foreground truncate mb-2">{{ normalizeUrl(item.originalUrl) }}</div>
                     <div class="flex justify-between items-center">
                       <div class="text-xs text-muted-foreground">{{ formatDate(item.createdAt) }}</div>
                       <Badge v-if="item.isProtected" variant="outline" class="text-xs px-2 py-0 h-5">
@@ -157,9 +157,16 @@ watch(isMobile, (newVal) => {
 });
 
 
+const normalizeUrl = (url: string): string => {
+  if (!url) return url;
+  return url.match(/^https?:\/\//) ? url : `https://${url}`;
+};
+
 const copyToClipboard = (shortUrl: string, id: number) => {
   if (typeof navigator !== 'undefined' && navigator.clipboard) {
-    navigator.clipboard.writeText(`${shortUrlPrefix.value}${shortUrl}`);
+    const fullUrl = `${shortUrlPrefix.value}${shortUrl}`;
+    const normalizedUrl = normalizeUrl(fullUrl);
+    navigator.clipboard.writeText(normalizedUrl);
     setCopiedId(id);
     toast.success("Copied to clipboard!", {
       description: "Your shortened URL is ready to share.",
