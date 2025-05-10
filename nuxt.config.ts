@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  modules: ["shadcn-nuxt"],
+  modules: ["shadcn-nuxt", "@formkit/auto-animate"],
   shadcn: {
     prefix: "",
     componentDir: "./components/ui",

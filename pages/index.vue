@@ -1,175 +1,555 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-    <div class="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 shadow-xl rounded-lg">
-      <h1 class="text-3xl font-bold text-center text-gray-800 dark:text-white">Shorten Your URL</h1>
+  <div class="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
+    <div class="w-full max-w-6xl">
+      <Transition name="fade-y" appear>
+        <div class="text-center mb-8 sm:mb-12">
+          <div class="inline-block">
+            <div class="flex items-center justify-center mb-2">
+              <Sparkles class="h-8 w-8 sm:h-10 sm:w-10 text-primary mr-2 animate-pulse-slow" />
+              <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">
+                Stellar<span class="text-primary">Link</span>
+              </h1>
+            </div>
+            <p class="text-muted-foreground text-sm sm:text-base">Shorten URLs with style and security</p>
+          </div>
+        </div>
+      </Transition>
 
-      <form @submit.prevent="shortenUrl" class="space-y-6">
-        <div>
-          <label for="originalUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Enter URL</label>
-          <input
-            id="originalUrl"
-            v-model="originalUrl"
-            type="url"
-            required
-            class="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="https://example.com"
-          />
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        <div class="md:col-span-2">
+          <Transition name="fade-y-delayed" appear>
+            <Tabs :model-value="activeTab" @update:model-value="setActiveTab" class="w-full">
+              <TabsList class="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="shorten" :disabled="loading"> Shorten URL </TabsTrigger>
+                <TabsTrigger value="success" :disabled="!isSuccess"> Your Link </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="shorten" class="space-y-4">
+                <Card class="border-2 shadow-lg">
+                  <CardHeader>
+                    <CardTitle>Create Shortened URL</CardTitle>
+                    <CardDescription> Enter a long URL to create a short, memorable link </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form @submit.prevent="submitUrl" class="space-y-6" v-auto-animate>
+                      <div class="space-y-2">
+                        <Label for="url">URL to shorten</Label>
+                        <div class="relative">
+                          <Input ref="inputUrlRef" id="url" type="url"
+                            placeholder="https://example.com/very/long/url/that/needs/shortening" v-model="originalUrl"
+                            class="pr-10" :disabled="loading" required />
+                          <Link
+                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        </div>
+                      </div>
+
+                      <div class="flex items-center justify-between space-x-2">
+                        <div class="flex items-center space-x-2">
+                          <Switch id="protected-mode" :checked="protectWithPin" @update:model-value="setProtectWithPin"
+                            :disabled="loading" />
+                          <Label for="protected-mode" class="cursor-pointer">
+                            <div class="flex items-center">
+                              <Lock v-if="protectWithPin" class="h-4 w-4 mr-1 text-primary" />
+                              <LockOpen v-else class="h-4 w-4 mr-1 text-muted-foreground" />
+                              PIN Protection
+                            </div>
+                          </Label>
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger as-child>
+                              <div class="text-xs text-muted-foreground cursor-help">?</div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Protect your link with a 4-6 digit PIN</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <Transition name="slide-fade">
+                        <div v-if="protectWithPin" class="space-y-2 pt-2">
+                          <Label for="pin">PIN Code (4-6 digits)</Label>
+                          <PinInput id="pin" v-model="pin" :length="6" @complete="handlePinComplete" :disabled="loading"
+                            type="text" inputmode="numeric">
+                            <PinInputGroup class="gap-1 justify-center">
+                              <PinInputSlot v-for="(slot, index) in 6" :key="index" :index="index"
+                                class="w-10 h-10 sm:w-12 sm:h-12 text-center rounded-md border border-input text-lg font-mono tracking-widest" />
+                            </PinInputGroup>
+                          </PinInput>
+                          <p v-if="pinError" class="text-xs text-destructive">{{ pinError }}</p>
+                          <p class="text-xs text-muted-foreground">
+                            Anyone with the link will need this PIN to access the destination
+                          </p>
+                        </div>
+                      </Transition>
+
+                      <Button type="submit" class="w-full" :disabled="loading">
+                        <span v-if="loading" class="flex items-center justify-center">
+                          <RefreshCw class="h-4 w-4 mr-2 animate-spin" />
+                          Shortening...
+                        </span>
+                        <span v-else>Shorten URL</span>
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="success" class="space-y-4">
+                <Transition name="fade-y" mode="out-in">
+                  <div v-if="isSuccess">
+                    <Card class="border-2 border-primary/20 shadow-lg overflow-hidden">
+                      <div class="absolute top-0 right-0 left-0 h-1.5 bg-primary/20 overflow-hidden">
+                        <div class="h-full bg-primary animate-progress-bar"></div>
+                      </div>
+                      <CardHeader class="pb-2">
+                        <div class="flex justify-between items-center">
+                          <CardTitle class="text-xl">Your Shortened URL</CardTitle>
+                          <Button variant="ghost" size="icon" class="h-8 w-8 p-0" @click="resetForm">
+                            <RefreshCw class="h-4 w-4" />
+                            <span class="sr-only">Create new link</span>
+                          </Button>
+                        </div>
+                        <CardDescription>
+                          Your link is ready to share
+                          <span v-if="lastSubmissionProtected" class="inline-flex items-center ml-1">
+                            <Lock class="h-3 w-3 mr-1 text-primary" />
+                            PIN Protected
+                          </span>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent class="space-y-4">
+                        <div class="relative">
+                          <div
+                            class="relative overflow-hidden rounded-md border bg-muted p-3 transition-transform hover:scale-[1.01]">
+                            <div class="flex items-center justify-between">
+                              <div class="flex items-center space-x-2">
+                                <div class="flex-shrink-0 rounded-full bg-primary/10 p-1">
+                                  <Link class="h-4 w-4 text-primary" />
+                                </div>
+                                <a :href="shortenedUrl" target="_blank" class="font-medium text-primary hover:underline"
+                                  @click.prevent="openShortUrl">
+                                  {{ displayShortUrl }}
+                                </a>
+                              </div>
+                              <Button variant="ghost" size="icon"
+                                class="h-8 w-8 p-0 transition-transform hover:scale-110" @click="handleCopyToClipboard">
+                                <Check v-if="copied" class="h-4 w-4 text-green-500" />
+                                <Copy v-else class="h-4 w-4" />
+                                <span class="sr-only">{{ copied ? 'Copied' : 'Copy URL' }}</span>
+                              </Button>
+                            </div>
+                            <div class="mt-2 text-xs text-muted-foreground truncate">Original: {{ lastOriginalUrl }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex justify-between space-x-2">
+                          <Button variant="outline" size="sm" class="flex-1" @click="qrVisible = !qrVisible">
+                            <QrCode class="h-4 w-4 mr-2" />
+                            {{ qrVisible ? 'Hide QR Code' : 'Show QR Code' }}
+                          </Button>
+                          <Button variant="outline" size="sm" class="flex-1" @click="openShortUrl">
+                            <ExternalLink class="h-4 w-4 mr-2" />
+                            Open Link
+                          </Button>
+                        </div>
+                        <Transition name="slide-fade">
+                          <div v-if="qrVisible" class="flex justify-center p-4 bg-card rounded-md border mt-2">
+                            <div class="relative w-40 h-40 sm:w-48 sm:h-48">
+                              <div class="absolute inset-0 flex items-center justify-center">
+                                <div ref="qrCodeEl"
+                                  class="w-36 h-36 sm:w-44 sm:h-44 bg-muted rounded-md overflow-hidden flex items-center justify-center text-muted-foreground">
+                                  QR Loading...
+                                </div>
+                              </div>
+                              <!-- Optional: Logo inside QR -->
+                              <!-- <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center">
+                                  <div class="text-primary font-bold text-xs">SL</div>
+                                </div>
+                              </div> -->
+                            </div>
+                          </div>
+                        </Transition>
+                      </CardContent>
+                      <CardFooter class="flex flex-col space-y-2">
+                        <div class="text-xs text-muted-foreground w-full text-center">
+                          This link is locally generated for now.
+                        </div>
+                        <div v-if="lastSubmissionProtected"
+                          class="flex items-center justify-center space-x-1 text-xs bg-primary/10 text-primary rounded-md p-2 w-full">
+                          <Lock class="h-3 w-3" />
+                          <span>Protected with PIN: {{ lastPinUsed }}</span>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </Transition>
+              </TabsContent>
+            </Tabs>
+          </Transition>
+
+          <Transition name="fade-y" appear>
+            <div v-if="isMobile" class="mt-6 sm:mt-8">
+              <HistorySection />
+            </div>
+          </Transition>
+
+          <Transition name="fade-y-delayed" appear>
+            <div class="mt-8 text-center text-sm text-muted-foreground">
+              <p>
+                Create short, memorable links with optional PIN protection.
+                <br />
+                Perfect for sharing on social media, emails, or messages.
+              </p>
+            </div>
+          </Transition>
         </div>
 
-        <div class="flex items-center">
-          <input
-            id="protectWithPin"
-            v-model="protectWithPin"
-            type="checkbox"
-            class="h-4 w-4 text-blue-600 dark:text-blue-500 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-          />
-          <label for="protectWithPin" class="ml-2 block text-sm text-gray-900 dark:text-gray-200">Protect with PIN</label>
-        </div>
-
-        <div v-if="protectWithPin">
-          <label for="pin" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Enter PIN (4-6 digits)</label>
-          <input
-            id="pin"
-            v-model="pin"
-            type="password"
-            minlength="4"
-            maxlength="6"
-            pattern="\d{4,6}"
-            class="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="1234"
-          />
-        </div>
-
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 transition-colors duration-150"
-        >
-          <span v-if="loading">Shortening...</span>
-          <span v-else>Short</span>
-        </button>
-      </form>
-
-      <div v-if="error" class="mt-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md">
-        <p>{{ error }}</p>
+        <Transition name="fade-x" appear>
+          <div v-if="!isMobile" class="md:col-span-1">
+            <HistorySection />
+          </div>
+        </Transition>
       </div>
-
-      <div v-if="shortenedUrl" class="mt-6 p-4 bg-green-50 dark:bg-green-900 border border-green-300 dark:border-green-600 rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">URL Shortened!</h2>
-        <div class="flex items-center justify-between mb-3">
-          <a :href="shortenedUrl" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{ shortenedUrl }}</a>
-          <button @click="copyToClipboard" class="ml-2 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <!-- lucide:copy -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
-          </button>
-        </div>
-        <div class="flex justify-center">
-          <!-- Placeholder for QR Code -->
-          <div ref="qrCodeEl" class="w-32 h-32 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-500">QR Code</div>
-        </div>
-      </div>
-       <!-- Toast notifications will appear here -->
-       <Toaster />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useFetch } from '#app';
-import QRCodeStyling from 'qr-code-styling'; // We'll need to install this
-import { Toaster, toast } from 'vue-sonner';
+import { ref, watch, onMounted, nextTick, computed } from 'vue';
+import { useFetch, useNuxtApp } from '#app';
+import QRCodeStyling from 'qr-code-styling';
+import { toast } from 'vue-sonner';
+import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PinInput, PinInputGroup, PinInputSlot } from '@/components/ui/pin-input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+// import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Replaced by toast for general errors
+
+import { Sparkles, Link, Lock, Unlock, QrCode, ExternalLink, RefreshCw, Copy, Check } from 'lucide-vue-next';
+import HistorySection from '@/components/HistorySection.vue';
+import { useMobile } from '~/composables/useMobile';
+import { useEventBus } from '~/composables/useEventBus';
+import { addShortenedUrlEntry, type ShortenedUrl } from '~/lib/indexed-db';
+
+const shortUrlDomain = 'stel.lk/'; // Configurable domain for display
 
 const originalUrl = ref('');
 const protectWithPin = ref(false);
-const pin = ref('');
-const shortenedUrl = ref('');
-const error = ref('');
+const pin = ref<string[]>([]);
 const loading = ref(false);
-const qrCodeEl = ref<HTMLElement | null>(null);
+const error = ref(''); // For form-specific errors not covered by toast.
+const pinError = ref('');
 
+const isSuccess = ref(false);
+const shortenedUrl = ref(''); // This will store the full URL from API if API provides domain
+const displayShortUrl = ref(''); // This will store just the slug or slug + stel.lk/
+const copied = ref(false);
+const qrVisible = ref(false);
+const activeTab = ref('shorten');
+
+const inputUrlRef = ref<InstanceType<typeof Input> | null>(null);
+const qrCodeEl = ref<HTMLElement | null>(null);
 const qrCodeInstance = ref<QRCodeStyling | null>(null);
 
-async function shortenUrl() {
-  error.value = '';
-  shortenedUrl.value = '';
-  loading.value = true;
+const isMobile = useMobile();
+const eventBus = useEventBus();
 
-  if (protectWithPin.value && (pin.value.length < 4 || pin.value.length > 6 || !/^\d+$/.test(pin.value))) {
-    error.value = 'PIN must be 4 to 6 digits.';
-    loading.value = false;
+// To show details of the *last* submission on the success card
+const lastOriginalUrl = ref('');
+const lastSubmissionProtected = ref(false);
+const lastPinUsed = ref('');
+
+
+onMounted(() => {
+  nextTick(() => {
+    // @ts-ignore
+    if (inputUrlRef.value?.$el) inputUrlRef.value?.$el.focus();
+    // else if (inputUrlRef.value) (inputUrlRef.value as unknown as HTMLInputElement).focus(); // Fallback for different component structures
+  });
+});
+
+watch(copied, (isCopied) => {
+  if (isCopied) {
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
+  }
+});
+
+const setActiveTab = (tab: string) => {
+  activeTab.value = tab;
+};
+
+const setProtectWithPin = (value: boolean) => {
+  protectWithPin.value = value;
+  if (!value) {
+    pin.value = [];
+    pinError.value = '';
+  }
+}
+
+const handlePinComplete = (value: string[]) => {
+  const currentPin = value.join('');
+  if (currentPin.length > 0 && (currentPin.length < 4 || currentPin.length > 6 || !/^\d+$/.test(currentPin))) {
+    pinError.value = 'PIN must be 4 to 6 digits.';
+  } else {
+    pinError.value = '';
+  }
+};
+
+const submitUrl = async () => {
+  error.value = '';
+  pinError.value = '';
+
+  if (!originalUrl.value) {
+    toast.error('Please enter a URL', { description: 'You need to provide a URL to shorten.' });
+    // @ts-ignore
+    if (inputUrlRef.value?.$el) inputUrlRef.value?.$el.focus();
     return;
   }
 
+  const currentPinValue = pin.value.join('');
+  if (protectWithPin.value && (currentPinValue.length < 4 || currentPinValue.length > 6 || !/^\d+$/.test(currentPinValue))) {
+    pinError.value = 'PIN must be 4-6 digits.';
+    toast.error('Invalid PIN', { description: 'PIN must be 4-6 digits.' });
+    return;
+  }
+
+  loading.value = true;
+  isSuccess.value = false; // Reset success state
+
   try {
-    const { data, error: fetchError } = await useFetch('/api/shorten', {
+    const { data: apiResponse, error: fetchError } = await useFetch('/api/shorten', {
       method: 'POST',
       body: {
         originalUrl: originalUrl.value,
-        pin: protectWithPin.value ? pin.value : undefined,
+        pin: protectWithPin.value ? currentPinValue : undefined,
       },
     });
 
-    if (fetchError.value) {
-      error.value = fetchError.value.data?.error || fetchError.value.message || 'Failed to shorten URL.';
-    } else if (data.value) {
-      // @ts-ignore
-      shortenedUrl.value = data.value.shortUrl;
-      if (qrCodeEl.value) {
-        if (!qrCodeInstance.value) {
-            qrCodeInstance.value = new QRCodeStyling({
-                width: 128,
-                height: 128,
-                // @ts-ignore
-                data: data.value.shortUrl,
-                image: '/favicon.ico', // Optional: Add a logo to the QR code
-                dotsOptions: {
-                    color: '#4267b2', // Example color
-                    type: 'rounded'
-                },
-                backgroundOptions: {
-                    color: '#e9ebee', // Example background
-                },
-                cornersSquareOptions: {
-                    type: 'extra-rounded',
-                    color: '#4267b2',
-                },
-                cornersDotOptions: {
-                    type: 'dot',
-                    color: '#4267b2',
-                }
-            });
-            qrCodeInstance.value.append(qrCodeEl.value);
-        } else {
-            // @ts-ignore
-            qrCodeInstance.value.update({ data: data.value.shortUrl });
-        }
-      }
-      toast.success('URL shortened successfully!');
+    if (fetchError.value || !apiResponse.value) {
+      const errorMessage = fetchError.value?.data?.error || fetchError.value?.message || 'Failed to shorten URL.';
+      toast.error('Shortening Failed', { description: errorMessage });
+      error.value = errorMessage; // Can be used for inline error display if needed
+      loading.value = false;
+      return;
     }
+
+    // @ts-ignore
+    const newShortUrlSlug = apiResponse.value.shortId || apiResponse.value.shortUrl.split('/').pop(); // Adapt based on actual API response
+    // @ts-ignore
+    const fullShortenedUrl = apiResponse.value.shortUrl || `${window.location.origin}/${newShortUrlSlug}`;
+
+
+    shortenedUrl.value = fullShortenedUrl;
+    displayShortUrl.value = `${shortUrlDomain}${newShortUrlSlug}`; // For display
+
+    lastOriginalUrl.value = originalUrl.value;
+    lastSubmissionProtected.value = protectWithPin.value;
+    lastPinUsed.value = protectWithPin.value ? currentPinValue : '';
+
+    // Save to IndexedDB
+    await addShortenedUrlEntry({
+      originalUrl: originalUrl.value,
+      shortUrl: newShortUrlSlug, // Save only slug to IndexedDB? Or full short URL? Example saves slug.
+      isProtected: protectWithPin.value,
+      pin: protectWithPin.value ? currentPinValue : undefined,
+      createdAt: Date.now(),
+    });
+
+    eventBus.emit('urlShortened'); // Notify history component
+
+    isSuccess.value = true;
+    activeTab.value = 'success';
+    toast.success('URL shortened successfully!', { description: 'Your new link is ready.' });
+
+    // Clear form for next use after a brief delay to allow tab switch
+    setTimeout(() => {
+      originalUrl.value = '';
+      // pin.value = []; // Keep PIN if user wants to reuse? Or clear? Let's clear for now.
+      // protectWithPin.value = false; // Reset protection?
+      if (qrCodeEl.value) generateQrCode(fullShortenedUrl);
+    }, 100);
+
+
   } catch (e: any) {
-    error.value = e.message || 'An unexpected error occurred.';
+    console.error("Error in submitUrl:", e);
+    toast.error('An unexpected error occurred.', { description: e.message });
+    error.value = e.message;
   } finally {
     loading.value = false;
   }
-}
+};
 
-async function copyToClipboard() {
-  if (shortenedUrl.value) {
-    try {
-      await navigator.clipboard.writeText(shortenedUrl.value);
+const generateQrCode = (urlToEncode: string) => {
+  if (!qrCodeEl.value || !urlToEncode) return;
+  qrCodeEl.value.innerHTML = ''; // Clear previous
+
+  // Determine colors from CSS variables
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+  // const cardColor = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+  // Use background for QR for better contrast on different themes.
+  const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+
+
+  qrCodeInstance.value = new QRCodeStyling({
+    width: qrCodeEl.value.clientWidth > 150 ? 176 : 144, // responsive QR
+    height: qrCodeEl.value.clientWidth > 150 ? 176 : 144,
+    data: urlToEncode,
+    image: '/favicon.ico', // Ensure this exists in public/
+    dotsOptions: { color: `hsl(${primaryColor})`, type: 'rounded' },
+    backgroundOptions: { color: `hsl(${bgColor})` }, // Use card or background
+    cornersSquareOptions: { color: `hsl(${primaryColor})`, type: 'extra-rounded' },
+    cornersDotOptions: { color: `hsl(${primaryColor})`, type: 'dot' },
+    qrOptions: { errorCorrectionLevel: 'H' }
+  });
+  qrCodeInstance.value.append(qrCodeEl.value);
+};
+
+
+watch(qrVisible, (isVisible) => {
+  if (isVisible && shortenedUrl.value && qrCodeEl.value) {
+    nextTick(() => {
+      generateQrCode(shortenedUrl.value);
+    });
+  }
+});
+
+
+const handleCopyToClipboard = () => {
+  if (!shortenedUrl.value) return;
+  navigator.clipboard.writeText(shortenedUrl.value) // Copy the full URL
+    .then(() => {
+      copied.value = true;
       toast.info('Short URL copied to clipboard!');
-    } catch (err) {
+    })
+    .catch(err => {
       toast.error('Failed to copy URL.');
       console.error('Failed to copy: ', err);
-    }
+    });
+};
+
+const openShortUrl = () => {
+  if (shortenedUrl.value) {
+    window.open(shortenedUrl.value, '_blank');
   }
 }
+
+const resetForm = () => {
+  originalUrl.value = '';
+  protectWithPin.value = false;
+  pin.value = [];
+  pinError.value = '';
+  error.value = '';
+  isSuccess.value = false;
+  shortenedUrl.value = '';
+  displayShortUrl.value = '';
+  qrVisible.value = false;
+  activeTab.value = 'shorten';
+  copied.value = false;
+  lastOriginalUrl.value = '';
+  lastSubmissionProtected.value = false;
+  lastPinUsed.value = '';
+
+  nextTick(() => {
+    // @ts-ignore
+    if (inputUrlRef.value?.$el) inputUrlRef.value?.$el.focus();
+  });
+};
+
 </script>
 
 <style scoped>
-/* Add any page-specific styles here */
-input:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Example focus style */
+/* General page transitions */
+.fade-y-enter-active,
+.fade-y-leave-active,
+.fade-y-delayed-enter-active,
+.fade-y-delayed-leave-active,
+.fade-x-enter-active,
+.fade-x-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-y-enter-from,
+.fade-y-leave-to,
+.fade-y-delayed-enter-from,
+.fade-y-delayed-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-x-enter-from,
+.fade-x-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-y-delayed-enter-active {
+  transition-delay: 0.1s;
+}
+
+/* PIN input section slide */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+  max-height: 0px;
+}
+
+.slide-fade-enter-to,
+.slide-fade-leave-from {
+  max-height: 300px;
+  /* Adjust based on content */
+}
+
+
+/* Sparkles animation */
+.animate-pulse-slow {
+  animation: pulse-slow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* Progress bar for success card */
+.animate-progress-bar {
+  animation: progress-bar-fill 1.5s ease-out forwards;
+}
+
+@keyframes progress-bar-fill {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
 }
 </style>
