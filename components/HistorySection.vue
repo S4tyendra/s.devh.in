@@ -50,7 +50,7 @@
             <ScrollArea class="h-[400px] pr-4">
               <div class="space-y-3" v-auto-animate>
                 <template v-for="(item, index) in history" :key="item.id">
-                  <div class="p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
+                  <div class="p-3 rounded-md border dark:bg-teal-900/30 bg-teal-200/30 hover:bg-accent/50 transition-colors border-teal-600/30">
                     <div class="flex justify-between items-start mb-1">
                       <div class="font-medium text-primary truncate max-w-[70%]">
                         <!-- Assuming a prefix like your example, adjust if needed -->
@@ -68,7 +68,7 @@
                     <div class="text-xs text-muted-foreground truncate mb-2">{{ normalizeUrl(item.originalUrl) }}</div>
                     <div class="flex justify-between items-center">
                       <div class="text-xs text-muted-foreground">{{ formatDate(item.createdAt) }}</div>
-                      <Badge v-if="item.isProtected" variant="outline" class="text-xs px-2 py-0 h-5">
+                      <Badge v-if="item.isProtected" variant="outline" class="text-xs px-2 py-0 h-5 border border-teal-600/30 bg-purple-600/20">
                         PIN: {{ item.pin }}
                       </Badge>
                     </div>
@@ -117,7 +117,7 @@ import type { ShortenedUrl } from '~/lib/indexed-db';
 import { getAllShortenedUrls, deleteShortenedUrlEntry, clearAllShortenedUrls as dbClearAll } from '~/lib/indexed-db';
 import { useMobile } from '~/composables/useMobile';
 
-const shortUrlPrefix = ref('stel.lk/'); // Placeholder, adjust as per your actual short URL structure
+const shortUrlPrefix = ref('s.devh.in/'); // Placeholder, adjust as per your actual short URL structure
 
 const history = ref<ShortenedUrl[]>([]);
 const isLoading = ref(true);

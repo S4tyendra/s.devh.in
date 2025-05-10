@@ -1,114 +1,199 @@
 <template>
-  <div class="container mx-auto p-4">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Reported URLs</h1>
-      <Button @click="openNewReportDialog">New Report</Button>
-    </div>
-
-    <!-- Basic Auth for Admin Actions -->
-    <div v-if="!isAdmin && showAdminLogin" class="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-600 rounded-lg">
-      <h2 class="text-lg font-semibold mb-2 text-yellow-800 dark:text-yellow-200">Admin Login</h2>
-      <form @submit.prevent="attemptAdminLogin" class="space-y-3">
-        <div>
-          <Label for="adminUser">Username</Label>
-          <Input id="adminUser" v-model="adminCredentials.user" type="text" required class="mt-1" />
-        </div>
-        <div>
-          <Label for="adminPass">Password</Label>
-          <Input id="adminPass" v-model="adminCredentials.password" type="password" required class="mt-1" />
-        </div>
-        <Button type="submit" :disabled="adminLoginLoading">
-          <span v-if="adminLoginLoading">Logging in...</span>
-          <span v-else>Login as Admin</span>
-        </Button>
-        <p v-if="adminLoginError" class="text-red-600 dark:text-red-400 text-sm">{{ adminLoginError }}</p>
-      </form>
-    </div>
-    <Button v-if="!isAdmin && !showAdminLogin" @click="showAdminLogin = true" variant="outline" size="sm">Show Admin Login</Button>
-     <Button v-if="isAdmin" @click="logoutAdmin" variant="outline" size="sm">Logout Admin</Button>
-
-
-    <!-- List of Reported URLs -->
-    <div v-if="loadingReports" class="text-center py-8">
-      <p class="text-gray-600 dark:text-gray-400">Loading reported URLs...</p>
-      <!-- You can add a spinner here -->
-    </div>
-    <div v-else-if="reportedUrls.length === 0" class="text-center py-8">
-      <p class="text-gray-600 dark:text-gray-400">No URLs reported yet.</p>
-    </div>
-    <div v-else class="space-y-4">
-      <div
-        v-for="report in reportedUrls"
-        :key="report._id"
-        class="p-4 rounded-lg shadow bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-      >
-        <div class="flex justify-between items-start">
-          <div>
-            <p class="text-lg font-semibold text-blue-600 dark:text-blue-400">/{{ report._id }}</p>
-            <p class="text-sm text-gray-500 dark:text-gray-400 truncate">Original: {{ report.originalUrl }}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Reported at: {{ new Date(report.reports[0].reportedAt).toLocaleString() }}</p>
-            <p v-if="report.reports[0].reason" class="text-xs text-gray-400 dark:text-gray-500">Reason: {{ report.reports[0].reason }}</p>
-          </div>
-          <div class="text-right">
-            <span
-              class="px-2 py-1 text-xs font-semibold rounded-full"
-              :class="{
-                'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200': report.status === 'pending',
-                'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200': report.status === 'approved',
-                'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200': report.status === 'blocked'
-              }"
-            >
-              {{ report.status || 'N/A' }}
-            </span>
-            <div v-if="isAdmin" class="mt-2">
-              <Select v-model="report.newStatus" @update:modelValue="(newVal) => updateReportStatus(report._id, newVal)">
-                <SelectTrigger class="w-[120px] h-8 text-xs">
-                  <SelectValue placeholder="Change Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                </SelectContent>
-              </Select>
+  <div class="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
+    <div class="w-full max-w-6xl">
+      <Transition name="fade-y" appear>
+        <div class="text-center mb-8 sm:mb-12">
+          <div class="inline-block blur-load">
+            <div class="flex items-center justify-center mb-2">
+              <Flag class="h-8 w-8 sm:h-10 sm:w-10 text-destructive mr-2 animate-pulse-slow" />
+              <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">
+                Report <span class="text-destructive">URL</span>
+              </h1>
+            </div>
+            <p class="text-muted-foreground text-sm sm:text-base">Help us keep the platform safe by reporting malicious URLs</p>
+            <div class="flex items-center justify-center space-x-4 mt-4">
+              <NuxtLink to="/" class="text-sm text-primary hover:underline flex items-center">
+                <ArrowLeft class="h-4 w-4 mr-1" />
+                Back to Shortener
+              </NuxtLink>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </Transition>
 
-    <!-- New Report Dialog -->
-    <Dialog :open="isNewReportDialogOpen" @update:open="isNewReportDialogOpen = $event">
-      <DialogContent class="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Report a URL</DialogTitle>
-          <DialogDescription>
-            Enter the short URL slug (e.g., abcDe) you wish to report. We'll check its destination.
-          </DialogDescription>
-        </DialogHeader>
-        <form @submit.prevent="submitReport" class="space-y-4 py-4">
-          <div>
-            <Label for="reportSlug">Short URL Slug</Label>
-            <Input id="reportSlug" v-model="newReport.slug" @blur="checkSlugDestination" required class="mt-1" />
-            <p v-if="slugCheck.loading" class="text-xs text-gray-500 mt-1">Checking slug...</p>
-            <p v-if="slugCheck.destination" class="text-xs text-green-600 mt-1">Redirects to: {{ slugCheck.destination }}</p>
-            <p v-if="slugCheck.error" class="text-xs text-red-600 mt-1">Error: {{ slugCheck.error }}</p>
-          </div>
-          <div>
-            <Label for="reportReason">Reason for reporting (optional)</Label>
-            <Textarea id="reportReason" v-model="newReport.reason" class="mt-1" rows="3" />
+      <!-- Basic Auth for Admin Actions -->
+      <Transition name="fade-y-delayed" appear>
+        <div v-if="!isAdmin && showAdminLogin">
+          <Card class="border-2 border-yellow-500/20 shadow-lg">
+            <CardHeader>
+              <CardTitle>Admin Login</CardTitle>
+              <CardDescription>Login to manage reported URLs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form @submit.prevent="attemptAdminLogin" class="space-y-4">
+                <div class="space-y-2">
+                  <Label for="adminUser">Username</Label>
+                  <Input id="adminUser" v-model="adminCredentials.user" type="text" required />
+                </div>
+                <div class="space-y-2">
+                  <Label for="adminPass">Password</Label>
+                  <Input id="adminPass" v-model="adminCredentials.password" type="password" required />
+                </div>
+                <Button type="submit" :disabled="adminLoginLoading" class="w-full">
+                  <Loader2 v-if="adminLoginLoading" class="h-4 w-4 mr-2 animate-spin" />
+                  <span v-else>Login as Admin</span>
+                </Button>
+                <p v-if="adminLoginError" class="text-xs text-destructive">{{ adminLoginError }}</p>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </Transition>
+
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-4">
+          <Button v-if="!isAdmin && !showAdminLogin" @click="showAdminLogin = true" variant="outline" size="sm">
+            <ShieldAlert class="h-4 w-4 mr-2" />
+            Admin Login
+          </Button>
+          <Button v-if="isAdmin" @click="logoutAdmin" variant="outline" size="sm">
+            <LogOut class="h-4 w-4 mr-2" />
+            Logout Admin
+          </Button>
+        </div>
+        <Button @click="openNewReportDialog">
+          <Flag class="h-4 w-4 mr-2" />
+          New Report
+        </Button>
+      </div>
+
+      <!-- List of Reported URLs -->
+      <Transition name="fade-y-delayed" appear>
+        <div v-if="loadingReports" class="text-center py-8 blur-load">
+          <Loader2 class="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          <p class="text-muted-foreground mt-2">Loading reported URLs...</p>
+        </div>
+        <div v-else-if="reportedUrls.length === 0" class="text-center py-8 blur-load">
+          <Ban class="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <p class="text-muted-foreground">No URLs reported yet.</p>
+        </div>
+        <div v-else class="space-y-4">
+          <Card v-for="report in reportedUrls" :key="report._id" 
+            class="border-2 transition-all duration-200 hover:shadow-md"
+            :class="{
+              'border-yellow-500/20': report.status === 'pending',
+              'border-green-500/20': report.status === 'approved',
+              'border-destructive/20': report.status === 'blocked'
+            }">
+            <CardHeader>
+              <div class="flex justify-between items-start">
+                <div class="space-y-1">
+                  <CardTitle class="text-lg flex items-center space-x-2">
+                    <Link class="h-4 w-4 text-primary" />
+                    <span class="font-mono">/{{ report._id }}</span>
+                  </CardTitle>
+                  <CardDescription class="truncate">
+                    Original: {{ report.originalUrl }}
+                  </CardDescription>
+                </div>
+                <div class="text-right">
+                  <Badge variant="outline"
+                    :class="{
+                      'border-yellow-500 text-yellow-500': report.status === 'pending',
+                      'border-green-500 text-green-500': report.status === 'approved',
+                      'border-destructive text-destructive': report.status === 'blocked'
+                    }">
+                    {{ report.status || 'N/A' }}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div class="space-y-2">
+                <p class="text-sm text-muted-foreground">
+                  Reported: {{ new Date(report.reports[0].reportedAt).toLocaleString() }}
+                </p>
+                <p v-if="report.reports[0].reason" class="text-sm border-l-2 border-muted pl-3">
+                  {{ report.reports[0].reason }}
+                </p>
+                <div v-if="isAdmin" class="pt-4">
+                  <Label>Update Status</Label>
+                  <Select v-model="report.newStatus" @update:modelValue="(newVal) => updateReportStatus(report._id, newVal)">
+                    <SelectTrigger :class="{
+                      'border-yellow-500/50': report.status === 'pending',
+                      'border-green-500/50': report.status === 'approved',
+                      'border-destructive/50': report.status === 'blocked'
+                    }">
+                      <SelectValue placeholder="Change Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending Review</SelectItem>
+                      <SelectItem value="approved">Approve URL</SelectItem>
+                      <SelectItem value="blocked">Block URL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Transition>
+
+      <!-- New Report Dialog -->
+      <Dialog :open="isNewReportDialogOpen" @update:open="isNewReportDialogOpen = $event">
+        <DialogContent class="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Report a URL</DialogTitle>
+            <DialogDescription>
+              Enter the short URL slug you wish to report. We'll check its destination.
+            </DialogDescription>
+          </DialogHeader>
+          <div class="space-y-4 py-4">
+            <div class="space-y-2">
+              <Label for="reportSlug">Short URL Slug</Label>
+              <div class="relative">
+                <Input 
+                  id="reportSlug" 
+                  v-model="newReport.slug" 
+                  @blur="checkSlugDestination"
+                  :disabled="slugCheck.loading"
+                  class="pr-10"
+                  required 
+                />
+                <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 v-if="slugCheck.loading" class="h-4 w-4 animate-spin text-muted-foreground" />
+                  <CheckCircle2 v-else-if="slugCheck.destination" class="h-4 w-4 text-green-500" />
+                  <XCircle v-else-if="slugCheck.error" class="h-4 w-4 text-destructive" />
+                </div>
+              </div>
+              <Transition name="slide-fade">
+                <div v-if="slugCheck.destination || slugCheck.error" class="text-xs mt-1"
+                  :class="{ 'text-green-500': slugCheck.destination, 'text-destructive': slugCheck.error }">
+                  {{ slugCheck.destination || slugCheck.error }}
+                </div>
+              </Transition>
+            </div>
+            <div class="space-y-2">
+              <Label for="reportReason">Reason for reporting</Label>
+              <Textarea 
+                id="reportReason" 
+                v-model="newReport.reason" 
+                placeholder="Please describe why you're reporting this URL..."
+                rows="3" 
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" @click="isNewReportDialogOpen = false">Cancel</Button>
-            <Button type="submit" :disabled="reportSubmitLoading || !slugCheck.destination">
-              <span v-if="reportSubmitLoading">Submitting...</span>
+            <Button @click="submitReport" :disabled="reportSubmitLoading || !slugCheck.destination">
+              <Loader2 v-if="reportSubmitLoading" class="h-4 w-4 mr-2 animate-spin" />
               <span v-else>Submit Report</span>
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-    <Toaster />
+        </DialogContent>
+      </Dialog>
+      
+    </div>
   </div>
 </template>
 
@@ -121,8 +206,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Toaster, toast } from 'vue-sonner';
-import type { ShortenedUrlDocument } from '~/server/api/shorten.post'; // Re-use this type
+import {
+  Flag,
+  ArrowLeft,
+  Link,
+  Loader2,
+  Ban,
+  LogOut,
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
+  Download
+} from 'lucide-vue-next';
 
 interface ReportedUrl extends ShortenedUrlDocument {
   newStatus?: 'pending' | 'approved' | 'blocked'; // For admin UI to change status
@@ -334,5 +432,56 @@ watch(() => newReport.value.slug, () => {
 </script>
 
 <style scoped>
-/* Styles for report page */
+/* Transitions */
+.fade-y-enter-active,
+.fade-y-leave-active,
+.fade-y-delayed-enter-active,
+.fade-y-delayed-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-y-enter-from,
+.fade-y-leave-to,
+.fade-y-delayed-enter-from,
+.fade-y-delayed-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-y-delayed-enter-active {
+  transition-delay: 0.1s;
+}
+
+/* Blur load animation */
+.blur-load {
+  animation: blur-load 0.6s ease-out forwards;
+}
+
+@keyframes blur-load {
+  0% {
+    filter: blur(8px);
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide fade animation */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-5px);
+  opacity: 0;
+}
 </style>

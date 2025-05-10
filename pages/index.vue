@@ -3,14 +3,24 @@
     <div class="w-full max-w-6xl">
       <Transition name="fade-y" appear>
         <div class="text-center mb-8 sm:mb-12">
-          <div class="inline-block">
+          <div class="inline-block blur-load">
             <div class="flex items-center justify-center mb-2">
               <Sparkles class="h-8 w-8 sm:h-10 sm:w-10 text-primary mr-2 animate-pulse-slow" />
               <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">
-                Stellar<span class="text-primary">Link</span>
+                DevH <span class="text-primary">MiNi</span>
               </h1>
             </div>
             <p class="text-muted-foreground text-sm sm:text-base">Shorten URLs with style and security</p>
+            <div class="flex items-center justify-center space-x-4 mt-4">
+              <NuxtLink to="/bulk" class="text-sm text-primary hover:underline flex items-center">
+                <Files class="h-4 w-4 mr-1" />
+                Bulk Shortening
+              </NuxtLink>
+              <NuxtLink to="/report" class="text-sm text-destructive hover:underline flex items-center">
+                <Flag class="h-4 w-4 mr-1" />
+                Report URL
+              </NuxtLink>
+            </div>
           </div>
         </div>
       </Transition>
@@ -37,7 +47,7 @@
                         <div class="relative">
                           <Input ref="inputUrlRef" id="url" type="text"
                             placeholder="https://example.com/very/long/url/that/needs/shortening" v-model="originalUrl"
-                            class="pr-10" :disabled="loading" required />
+                            class="pr-10 border dark:border-teal-900 border-teal-500" :disabled="loading" required />
                           <Link
                             class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         </div>
@@ -73,7 +83,7 @@
                             type="text" inputmode="numeric">
                             <PinInputGroup class="gap-1 justify-center">
                               <PinInputSlot v-for="(slot, index) in 6" :key="index" :index="index"
-                                class="w-10 h-10 sm:w-12 sm:h-12 text-center rounded-md border border-input text-lg font-mono tracking-widest" />
+                                class="w-10 h-10 sm:w-12 sm:h-12 text-center rounded-md border dark:border-teal-900 border-teal-500 text-lg font-mono tracking-widest" />
                             </PinInputGroup>
                           </PinInput>
                           <p v-if="pinError" class="text-xs text-destructive">{{ pinError }}</p>
@@ -88,7 +98,7 @@
                           <RefreshCw class="h-4 w-4 mr-2 animate-spin" />
                           Shortening...
                         </span>
-                        <span v-else>Shorten URL</span>
+                        <span v-else class="dark:text-white">Shorten URL</span>
                       </Button>
                     </form>
                   </CardContent>
@@ -194,16 +204,6 @@
               <HistorySection />
             </div>
           </Transition>
-
-          <Transition name="fade-y-delayed" appear>
-            <div class="mt-8 text-center text-sm text-muted-foreground">
-              <p>
-                Create short, memorable links with optional PIN protection.
-                <br />
-                Perfect for sharing on social media, emails, or messages.
-              </p>
-            </div>
-          </Transition>
         </div>
 
         <Transition name="fade-x" appear>
@@ -233,13 +233,13 @@ import { PinInput, PinInputGroup, PinInputSlot } from '@/components/ui/pin-input
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 // import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Replaced by toast for general errors
 
-import { Sparkles, Link, Lock, Unlock, QrCode, ExternalLink, RefreshCw, Copy, Check } from 'lucide-vue-next';
+import { Sparkles, Link, Lock, Unlock, QrCode, ExternalLink, RefreshCw, Copy, Check, Files, Flag } from 'lucide-vue-next';
 import HistorySection from '@/components/HistorySection.vue';
 import { useMobile } from '~/composables/useMobile';
 import { useEventBus } from '~/composables/useEventBus';
 import { addShortenedUrlEntry, type ShortenedUrl } from '~/lib/indexed-db';
 
-const shortUrlDomain = 'stel.lk/'; // Configurable domain for display
+const shortUrlDomain = 's.devh.in/'; // Configurable domain for display
 
 const originalUrl = ref('');
 const protectWithPin = ref(false);
@@ -557,6 +557,24 @@ const resetForm = () => {
 
   to {
     width: 100%;
+  }
+}
+
+/* Blur load animation */
+.blur-load {
+  animation: blur-load 0.6s ease-out forwards;
+}
+
+@keyframes blur-load {
+  0% {
+    filter: blur(8px);
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1);
   }
 }
 </style>
