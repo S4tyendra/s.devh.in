@@ -20,7 +20,7 @@
 </template>
 
 <style scoped>
-.router-link-exact-active {
+/* .router-link-exact-active {
   @apply text-blue-600 dark:text-blue-400 font-semibold;
-}
+} */
 </style>
