@@ -14,10 +14,12 @@ function getRandomString(length: number) {
 export interface ShortenedUrlDocument { // Add export here
   _id: string;
   originalUrl: string;
-  pin?: string;
+  pin?: string; // Legacy field, will be phased out
   createdAt: Date;
   status?: 'pending' | 'approved' | 'blocked'; // For reporting feature
   reports?: { reportedAt: Date; reason?: string }[]; // For storing report details
+  click_count?: number; // New field for click tracking
+  is_safe?: boolean; // New field for safety status (derived from status !== 'blocked')
 }
 
 export default defineEventHandler(async (event) => {
@@ -26,7 +28,7 @@ export default defineEventHandler(async (event) => {
   const collection = db.collection<ShortenedUrlDocument>("shortenedUrls");
   const body = await readBody(event);
 
-  const { originalUrl, pin } = body;
+  const { originalUrl } = body;
 
   if (!originalUrl || !validUrl.isUri(originalUrl)) {
     throw createError({
@@ -35,14 +37,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  if (pin) {
-    if (typeof pin !== 'string' || !/^\d{4,6}$/.test(pin)) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'PIN must be 4 to 6 digits.',
-      });
-    }
-  }
+  // PIN protection has been removed entirely as per requirements
 
   // Generate a unique short ID.
   // For simplicity, we'll try a few times if a collision occurs.
@@ -70,11 +65,12 @@ export default defineEventHandler(async (event) => {
     _id: shortId,
     originalUrl,
     createdAt: new Date(),
+    // Initialize click_count and is_safe for client-side redirection
+    // click_count will be incremented by the API endpoint
+    // is_safe defaults to true (not blocked)
   };
 
-  if (pin) {
-    newShortenedUrlEntry.pin = pin; // Store the PIN as-is
-  }
+  // PIN protection has been removed entirely as per requirements
 
   try {
     await collection.insertOne(newShortenedUrlEntry);

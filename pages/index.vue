@@ -53,45 +53,7 @@
                         </div>
                       </div>
 
-                      <div class="flex items-center justify-between space-x-2">
-                        <div class="flex items-center space-x-2">
-                          <Switch id="protected-mode" :checked="protectWithPin" @update:model-value="setProtectWithPin"
-                            :disabled="loading" />
-                          <Label for="protected-mode" class="cursor-pointer">
-                            <div class="flex items-center">
-                              <Lock v-if="protectWithPin" class="h-4 w-4 mr-1 text-primary" />
-                              <Unlock v-else class="h-4 w-4 mr-1 text-muted-foreground" />
-                              PIN Protection
-                            </div>
-                          </Label>
-                        </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger as-child>
-                              <div class="text-xs text-muted-foreground cursor-help">?</div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Protect your link with a 4-6 digit PIN</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <Transition name="slide-fade">
-                        <div v-if="protectWithPin" class="space-y-2 pt-2">
-                          <Label for="pin">PIN Code (4-6 digits)</Label>
-                          <PinInput id="pin" v-model="pin" :length="6" @complete="handlePinComplete" :disabled="loading"
-                            type="text" inputmode="numeric">
-                            <PinInputGroup class="gap-1 justify-center">
-                              <PinInputSlot v-for="(slot, index) in 6" :key="index" :index="index"
-                                class="w-10 h-10 sm:w-12 sm:h-12 text-center rounded-md border dark:border-teal-900 border-teal-500 text-lg font-mono tracking-widest" />
-                            </PinInputGroup>
-                          </PinInput>
-                          <p v-if="pinError" class="text-xs text-destructive">{{ pinError }}</p>
-                          <p class="text-xs text-muted-foreground">
-                            Anyone with the link will need this PIN to access the destination
-                          </p>
-                        </div>
-                      </Transition>
+                      <!-- PIN protection has been removed as per requirements -->
 
                       <Button type="submit" class="w-full" :disabled="loading">
                         <span v-if="loading" class="flex items-center justify-center">
@@ -122,10 +84,7 @@
                         </div>
                         <CardDescription>
                           Your link is ready to share
-                          <span v-if="lastSubmissionProtected" class="inline-flex items-center ml-1">
-                            <Lock class="h-3 w-3 mr-1 text-primary" />
-                            PIN Protected
-                          </span>
+                          <!-- PIN protection removed -->
                         </CardDescription>
                       </CardHeader>
                       <CardContent class="space-y-4">
@@ -186,11 +145,7 @@
                         <div class="text-xs text-muted-foreground w-full text-center">
                           This link is locally generated for now.
                         </div>
-                        <div v-if="lastSubmissionProtected"
-                          class="flex items-center justify-center space-x-1 text-xs bg-primary/10 text-primary rounded-md p-2 w-full">
-                          <Lock class="h-3 w-3" />
-                          <span>Protected with PIN: {{ lastPinUsed }}</span>
-                        </div>
+                        <!-- PIN protection display removed -->
                       </CardFooter>
                     </Card>
                   </div>
@@ -227,13 +182,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PinInput, PinInputGroup, PinInputSlot } from '@/components/ui/pin-input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 // import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Replaced by toast for general errors
 
-import { Sparkles, Link, Lock, Unlock, QrCode, ExternalLink, RefreshCw, Copy, Check, Files, Flag } from 'lucide-vue-next';
+import { Sparkles, Link, QrCode, ExternalLink, RefreshCw, Copy, Check, Files, Flag } from 'lucide-vue-next';
 import HistorySection from '@/components/HistorySection.vue';
 import { useMobile } from '~/composables/useMobile';
 import { useEventBus } from '~/composables/useEventBus';
@@ -242,11 +194,8 @@ import { addShortenedUrlEntry, type ShortenedUrl } from '~/lib/indexed-db';
 const shortUrlDomain = 's.devh.in/'; // Configurable domain for display
 
 const originalUrl = ref('');
-const protectWithPin = ref(false);
-const pin = ref<string[]>([]);
 const loading = ref(false);
 const error = ref(''); // For form-specific errors not covered by toast.
-const pinError = ref('');
 
 const isSuccess = ref(false);
 const shortenedUrl = ref(''); // This will store the full URL from API if API provides domain
@@ -264,8 +213,6 @@ const eventBus = useEventBus();
 
 // To show details of the *last* submission on the success card
 const lastOriginalUrl = ref('');
-const lastSubmissionProtected = ref(false);
-const lastPinUsed = ref('');
 
 
 onMounted(() => {
@@ -288,23 +235,6 @@ const setActiveTab = (tab: string) => {
   activeTab.value = tab;
 };
 
-const setProtectWithPin = (value: boolean) => {
-  protectWithPin.value = value;
-  if (!value) {
-    pin.value = [];
-    pinError.value = '';
-  }
-}
-
-const handlePinComplete = (value: string[]) => {
-  const currentPin = value.join('');
-  if (currentPin.length > 0 && (currentPin.length < 4 || currentPin.length > 6 || !/^\d+$/.test(currentPin))) {
-    pinError.value = 'PIN must be 4 to 6 digits.';
-  } else {
-    pinError.value = '';
-  }
-};
-
 const normalizeUrl = (url: string): string => {
   if (!url) return url;
   return url.match(/^https?:\/\//) ? url : `https://${url}`;
@@ -312,7 +242,6 @@ const normalizeUrl = (url: string): string => {
 
 const submitUrl = async () => {
   error.value = '';
-  pinError.value = '';
 
   if (!originalUrl.value) {
     toast.error('Please enter a URL', { description: 'You need to provide a URL to shorten.' });
@@ -323,12 +252,7 @@ const submitUrl = async () => {
 
   const normalizedUrl = normalizeUrl(originalUrl.value);
   
-  const currentPinValue = pin.value.join('');
-  if (protectWithPin.value && (currentPinValue.length < 4 || currentPinValue.length > 6 || !/^\d+$/.test(currentPinValue))) {
-    pinError.value = 'PIN must be 4-6 digits.';
-    toast.error('Invalid PIN', { description: 'PIN must be 4-6 digits.' });
-    return;
-  }
+  // PIN protection has been removed as per requirements
 
   loading.value = true;
   isSuccess.value = false; // Reset success state
@@ -338,7 +262,7 @@ const submitUrl = async () => {
       method: 'POST',
       body: {
         originalUrl: normalizedUrl,
-        pin: protectWithPin.value ? currentPinValue : undefined,
+        // PIN field removed
       },
     });
 
@@ -360,15 +284,14 @@ const submitUrl = async () => {
     displayShortUrl.value = `${shortUrlDomain}${newShortUrlSlug}`; // For display
 
     lastOriginalUrl.value = originalUrl.value;
-    lastSubmissionProtected.value = protectWithPin.value;
-    lastPinUsed.value = protectWithPin.value ? currentPinValue : '';
+    // PIN-related state removed
 
     // Save to IndexedDB
     await addShortenedUrlEntry({
       originalUrl: originalUrl.value,
       shortUrl: newShortUrlSlug, // Save only slug to IndexedDB? Or full short URL? Example saves slug.
-      isProtected: protectWithPin.value,
-      pin: protectWithPin.value ? currentPinValue : undefined,
+      isProtected: false, // No longer protected
+      pin: undefined, // No PIN
       createdAt: Date.now(),
     });
 
@@ -381,8 +304,7 @@ const submitUrl = async () => {
     // Clear form for next use after a brief delay to allow tab switch
     setTimeout(() => {
       originalUrl.value = '';
-      // pin.value = []; // Keep PIN if user wants to reuse? Or clear? Let's clear for now.
-      // protectWithPin.value = false; // Reset protection?
+      // PIN-related clearing removed
       if (qrCodeEl.value) generateQrCode(fullShortenedUrl);
     }, 100);
 
@@ -452,9 +374,7 @@ const openShortUrl = () => {
 
 const resetForm = () => {
   originalUrl.value = '';
-  protectWithPin.value = false;
-  pin.value = [];
-  pinError.value = '';
+  // PIN-related state removed
   error.value = '';
   isSuccess.value = false;
   shortenedUrl.value = '';
@@ -463,8 +383,7 @@ const resetForm = () => {
   activeTab.value = 'shorten';
   copied.value = false;
   lastOriginalUrl.value = '';
-  lastSubmissionProtected.value = false;
-  lastPinUsed.value = '';
+  // PIN-related state removed
 
   nextTick(() => {
     // @ts-ignore
@@ -503,27 +422,7 @@ const resetForm = () => {
   transition-delay: 0.1s;
 }
 
-/* PIN input section slide */
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateY(-10px);
-  opacity: 0;
-  max-height: 0px;
-}
-
-.slide-fade-enter-to,
-.slide-fade-leave-from {
-  max-height: 300px;
-  /* Adjust based on content */
-}
+/* PIN-related animations removed */
 
 
 /* Sparkles animation */
