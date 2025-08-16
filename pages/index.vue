@@ -231,8 +231,8 @@ watch(copied, (isCopied) => {
   }
 });
 
-const setActiveTab = (tab: string) => {
-  activeTab.value = tab;
+const setActiveTab = (tab: string | number) => {
+  activeTab.value = String(tab);
 };
 
 const normalizeUrl = (url: string): string => {

@@ -66,8 +66,8 @@ onMounted(async () => {
   }
 
   try {
-    // Call the local API endpoint we created
-    const response = await $fetch(`/api/app/urlshortener/url/${slug}`);
+    // Call the external API endpoint as specified in requirements  
+    const response = await $fetch(`https://devh.in/api/app/urlshortener/url/${slug}`);
     
     if (response.is_safe === true) {
       // Redirect to original URL if safe

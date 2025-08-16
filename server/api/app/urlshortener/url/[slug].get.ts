@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
     // Construct the short URL
     const requestHost = getRequestHost(event);
-    const protocol = getRequestProtocol(event);
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const shortUrl = `${protocol}://${requestHost}/${slug}`;
 
     // Return the response matching the required schema
