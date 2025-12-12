@@ -102,8 +102,3 @@ Contributions are welcome\! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is open source. Unlicensed (Public Domain).
-
-```
-
-timestamp: Friday, December 12, 2025 at 14:57:30 (IST)
-```
